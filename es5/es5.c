@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -48,7 +49,6 @@ int isnice2(const char *str)
 	int rule1 = 0;
 	int rule2 = 0;
 
-	printf("%s ", str);
 	char seq[3] = {0};
 	for (size_t i = 0; str[i]; i++) {
 		if (!rule1) {
@@ -56,19 +56,16 @@ int isnice2(const char *str)
 			seq[1] = str[i];
 			char *find = strstr(str + i + 1, seq);
 			if (seq[0] && find) {
-				printf("Rule1: %s ", seq);
 				rule1 = 1;
 			}
 		}
 		if (!rule2) {
 			if (i >= 2 && str[i-2] == str[i]) {
-				printf("Rule2: %.3s ", str + i - 2);
 				rule2 = 1;
 			}
 		}
 	}
 
-	printf("\n");
 	if (rule1 && rule2) {
 		return 1;
 	}
@@ -89,22 +86,37 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	assert(isnice("ugknbfddgicrmopn"));
+	assert(isnice("aaa"));
+	assert(!isnice("jchzalrnumimnmhp"));
+	assert(!isnice("haegwjzuvuyypxyu"));
+	assert(!isnice("dvszwmarrgswjxmb"));
+
 	isnice2("qjhvhtzxzqqjkmpb");
 	isnice2("xxyxx");
 	isnice2("uurcxstgmygtbstg");
 	isnice2("ieodomkazucvgmuy");
 
-	int count = 0;
+	size_t part1 = 0;
+	size_t part2 = 0;
 	char *line = NULL;
 	size_t linesize = 0;
-	while (getline(&line, &linesize, input) >= 0) {
+	while (getline(&line, &linesize, input) >= 0)
+	{
 		line[strlen(line)-1] = 0;
+		if (isnice(line))
+		{
+			part1++;
+		}
 		if (isnice2(line))
-			count++;
+		{
+			part2++;
+		}
 	}
 	free(line);
 
-	printf("nice strings: %d\n", count);
+	printf("part1: %zu\n", part1);
+	printf("part2: %zu\n", part2);
 	fclose(input);
 	return 0;
 }

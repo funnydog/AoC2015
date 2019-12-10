@@ -45,16 +45,22 @@ static int permutations_find_largest(struct permutations *p, size_t *pos)
 	size_t imax = p->count;
 	for (size_t i = 0; i < p->count; i++) {
 		int other;
-		if (!p->dir[i] && i > 0) {
+		if (!p->dir[i] && i > 0)
+		{
 			/* looking left */
 			other = i-1;
-		} else if (p->dir[i] && i < p->count - 1) {
+		}
+		else if (p->dir[i] && i < p->count - 1)
+		{
 			/* looking right */
 			other = i+1;
-		} else {
+		}
+		else
+		{
 			continue;
 		}
-		if (p->num[i] > p->num[other] && vmax < p->num[i]) {
+		if (p->num[i] > p->num[other] && vmax < p->num[i])
+		{
 			vmax = p->num[i];
 			imax = i;
 		}
@@ -108,24 +114,28 @@ static int map_find(struct map *m, const char *name, size_t *pos)
 	}
 
 	size_t low = 0;
-	size_t high = m->count;
-	while (low < high) {
-		size_t mid = low + (high - low) / 2;
-		if (strcmp(m->table[mid], name) < 0) {
-			low = mid + 1;
-		} else {
-			high = mid;
+	size_t high = m->count-1;
+	while (low != high)
+	{
+		size_t mid = (low + high + 1) / 2;
+		if (strcmp(m->table[mid], name) > 0)
+		{
+			high = mid - 1;
+		}
+		else
+		{
+			low = mid;
 		}
 	}
-	int c = strcmp(m->table[high], name);
+	int c = strcmp(m->table[low], name);
 	if (c < 0) {
-		*pos = high + 1;
+		*pos = low + 1;
 		return 0;
 	} else if (c > 0) {
-		*pos = high;
+		*pos = low;
 		return 0;
 	} else {
-		*pos = high;
+		*pos = low;
 		return 1;
 	}
 }
@@ -188,41 +198,61 @@ static struct map *map_load(FILE *input)
 		}
 	}
 	m->adj = malloc(m->count * sizeof(m->adj[0]));
-	if (!m->adj) {
+	if (!m->adj)
+	{
 		map_free(m);
 		return NULL;
 	}
-	for (size_t i = 0; i < m->count; i++) {
+	for (size_t i = 0; i < m->count; i++)
+	{
 		m->adj[i] = malloc(m->count * sizeof(m->adj[0][0]));
-		if (!m->adj[i]) {
+		if (!m->adj[i])
+		{
 			map_free(m);
 			return NULL;
 		}
-		for (size_t j = 0; j < m->count; j++) {
+		for (size_t j = 0; j < m->count; j++)
+		{
 			m->adj[i][j] = INT_MAX;
 		}
 	}
 	rewind(input);
-	while (getline(&line, &linesize, input) != -1) {
+	while (getline(&line, &linesize, input) != -1)
+	{
 		int i = 0;
 		char *l1, *l2;
-		for (char *t = strtok(line, " \n"); t != NULL; t = strtok(NULL, " \n")) {
-			if (i == 0) {
-				if (strcmp(t, "to") == 0) {
+		for (char *t = strtok(line, " \n");
+		     t;
+		     t = strtok(NULL, " \n"))
+		{
+			if (i == 0)
+			{
+				if (strcmp(t, "to") == 0)
+				{
 					i++;
-				} else {
+				}
+				else
+				{
 					l1 = t;
 				}
-			} else if (i == 1) {
-				if (strcmp(t, "=") == 0) {
+			}
+			else if (i == 1)
+			{
+				if (strcmp(t, "=") == 0)
+				{
 					i++;
-				} else {
+				}
+				else
+				{
 					l2 = t;
 				}
-			} else if (i == 2) {
+			}
+			else if (i == 2)
+			{
 				char *end;
 				int dist = strtol(t, &end, 10);
-				if (t != end && end[0] == 0) {
+				if (t != end && end[0] == 0)
+				{
 					map_set_distance(m, l1, l2, dist);
 					break;
 				}
@@ -236,7 +266,8 @@ static struct map *map_load(FILE *input)
 static int map_distance(struct map *m, int *pts)
 {
 	int dst = 0;
-	for (size_t i = 0; i < m->count-1; i++) {
+	for (size_t i = 0; i < m->count-1; i++)
+	{
 		dst += m->adj[pts[i]][pts[i+1]];
 	}
 	return dst;
@@ -244,20 +275,23 @@ static int map_distance(struct map *m, int *pts)
 
 int main(int argc, char *argv[])
 {
-	if (argc < 2) {
+	if (argc < 2)
+	{
 		fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
 		return -1;
 	}
 
 	FILE *input = fopen(argv[1], "rb");
-	if (!input) {
+	if (!input)
+	{
 		fprintf(stderr, "Cannot open %s for reading\n", argv[1]);
 		return -1;
 	}
 
 	struct map *m = map_load(input);
 	fclose(input);
-	if (!m) {
+	if (!m)
+	{
 		fprintf(stderr, "Cannot parse the map\n");
 		return -1;
 	}
@@ -265,17 +299,22 @@ int main(int argc, char *argv[])
 	int mindist = INT_MAX;
 	int maxdist = INT_MIN;
 	struct permutations *p = permutations_new(m->count);
-	do {
+	do
+	{
 		int d = map_distance(m, p->num);
 		if (mindist > d)
+		{
 			mindist = d;
+		}
 		if (maxdist < d)
+		{
 			maxdist = d;
+		}
 	} while (permutations_next(p));
 	permutations_free(p);
-
-	printf("Shortest distance: %d\n", mindist);
-	printf("Longest distance: %d\n", maxdist);
 	map_free(m);
+
+	printf("part1: %d\n", mindist);
+	printf("part2: %d\n", maxdist);
 	return 0;
 }

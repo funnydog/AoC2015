@@ -49,15 +49,22 @@ int main(int argc, char *argv[])
 	}
 
 	char *src = strdup(argv[1]);
-	for (int i = 0; i < 50; i++) {
+	for (int i = 0; i < 50; i++)
+	{
 		char *dst = NULL;
 		size_t dstlen = 0;
 		encode(src, &dst, &dstlen);
 		free(src);
 		src = dst;
-		printf("%d: %zu\n", i+1, strlen(src));
+		if (i + 1 == 40)
+		{
+			printf("part1: %zu\n", strlen(src));
+		}
+		if (i + 1 == 50)
+		{
+			printf("part2: %zu\n", strlen(src));
+		}
 	}
-	printf("%zu\n", strlen(src));
 	free(src);
 
 	return 0;

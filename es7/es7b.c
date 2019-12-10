@@ -1,10 +1,12 @@
+#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 /* gate operators */
-enum {
+enum
+{
 	ASSIGN,
 	AND,
 	OR,
@@ -35,14 +37,16 @@ struct symtab
 };
 
 /* state of the vertex */
-enum {
+enum
+{
 	UNKNOWN,
 	DISCOVERED,
 	PROCESSED,
 };
 
 /* type of edge */
-enum {
+enum
+{
 	TREE,
 	BACK,
 	FORWARD,
@@ -51,31 +55,33 @@ enum {
 
 struct edge
 {
-	size_t y;
+	struct vertex *target;
 	struct edge *next;
 };
 
 struct vertex
 {
 	int state;
-	size_t parent;
+	struct vertex *parent;
 	size_t degree;
 	size_t entry;
 	size_t exit;
 	struct edge *edges;
-
 	struct gate data;
+
+	struct vertex *next;
 };
+
+#define TABLE_SIZE 1024
 
 struct graph
 {
-	struct vertex *verts;
+	struct vertex *table[TABLE_SIZE];
 	size_t vcount;
-	size_t vsize;
 	size_t ecount;
 	size_t time;
 
-	size_t *stack;
+	struct vertex **stack;
 	size_t scount;
 };
 
@@ -163,8 +169,10 @@ static void gate_parse(char *line, struct gate *g)
 	memset(g, 0, sizeof(*g));
 	/* g->op = ASSIGN; */
 	int dst = 0;
-	char *tok = strtok(line, " \n");
-	while (tok) {
+	for (char *tok = strtok(line, " \n");
+	     tok;
+	     tok = strtok(NULL, " \n"))
+	{
 		if (strcmp(tok, "AND") == 0) {
 			g->op = AND;
 		} else if (strcmp(tok, "OR") == 0) {
@@ -185,13 +193,13 @@ static void gate_parse(char *line, struct gate *g)
 			g->dst = strdup(tok);
 			break;
 		}
-		tok = strtok(NULL, " \n");
 	}
 }
 
 static uint16_t gate_eval(struct gate *g, struct symtab *st)
 {
-	switch (g->op) {
+	switch (g->op)
+	{
 	case ASSIGN:
 		return symtab_get_value(st, g->src1);
 	case AND:
@@ -209,171 +217,209 @@ static uint16_t gate_eval(struct gate *g, struct symtab *st)
 	}
 }
 
-static void process_vertex_early(struct graph *g, size_t v)
+static void process_vertex_early(struct graph *g, struct vertex *v)
 {
 }
 
-static void process_vertex_late(struct graph *g, size_t v)
+static void process_vertex_late(struct graph *g, struct vertex *v)
 {
 	g->stack[g->scount++] = v;
 }
 
-static int edge_type(struct graph *g, size_t x, size_t y)
+static int edge_type(struct graph *g, struct vertex *x, struct vertex *y)
 {
-	if (g->verts[y].parent == x) return TREE;
-	if (g->verts[y].state == DISCOVERED) return BACK;
-	if (g->verts[y].state == PROCESSED) {
-		if (g->verts[y].entry > g->verts[x].exit) return FORWARD;
-		if (g->verts[y].entry < g->verts[x].exit) return CROSS;
+	if (y->parent == x)
+	{
+		return TREE;
+	}
+
+	if (y->state == DISCOVERED)
+	{
+		return BACK;
+	}
+	if (y->state == PROCESSED)
+	{
+		if (y->entry > x->entry)
+		{
+			return FORWARD;
+		}
+
+		if (y->entry < x->entry)
+		{
+			return CROSS;
+		}
 	}
 	abort();
 }
-static void process_edge(struct graph *g, size_t x, size_t y)
+
+static void process_edge(struct graph *g, struct vertex *x, struct vertex *y)
 {
-	if (edge_type(g, x, y) == BACK) {
-		printf("warning, found a back-edge, not a DAG\n");
+	if (edge_type(g, x, y) == BACK)
+	{
+		fprintf(stderr, "found a back-edge, not a DAG\n");
+		abort();
 	}
 }
 
-static void dfsr(struct graph *g, size_t v)
+static void dfsr(struct graph *g, struct vertex *v)
 {
-	g->verts[v].state = DISCOVERED;
-	g->verts[v].entry = ++g->time;
+	v->state = DISCOVERED;
+	v->entry = ++g->time;
 
 	process_vertex_early(g, v);
-
-	struct edge *p = g->verts[v].edges;
-	while (p != NULL) {
-		size_t y = p->y;
-		if (g->verts[y].state == UNKNOWN) {
-			g->verts[y].parent = v;
+	for (struct edge *p = v->edges; p; p = p->next)
+	{
+		struct vertex *y = p->target;
+		if (y->state == UNKNOWN)
+		{
+			y->parent = v;
 			process_edge(g, v, y);
 			dfsr(g, y);
-		} else {
+		}
+		else
+		{
 			process_edge(g, v, y);
 		}
-		p = p->next;
 	}
 
 	process_vertex_late(g, v);
-	g->verts[v].exit = ++g->time;
-	g->verts[v].state = PROCESSED;
+	v->exit = ++g->time;
+	v->state = PROCESSED;
 }
 
 static void graph_free(struct graph *g)
 {
-	if (g) {
-		while (g->vcount--) {
-			free(g->verts[g->vcount].data.dst);
-			free(g->verts[g->vcount].data.src2);
-			free(g->verts[g->vcount].data.src1);
+	if (g)
+	{
+		for (int i = 0; i < TABLE_SIZE; i++)
+		{
+			struct vertex *v = g->table[i];
+			while (v)
+			{
+				struct vertex *tv = v;
+				v = v->next;
 
-			struct edge *p = g->verts[g->vcount].edges;
-			while (p != NULL) {
-				struct edge *t = p;
-				p = p->next;
-				free(t);
+				struct edge *e = tv->edges;
+				while (e)
+				{
+					struct edge *te = e;
+					e = e->next;
+					free(te);
+				}
+				free(tv->data.dst);
+				free(tv->data.src2);
+				free(tv->data.src1);
+				free(tv);
 			}
 		}
 		free(g->stack);
-		free(g->verts);
 		free(g);
 	}
 }
 
-static int insert_edge(struct graph *g, size_t x, size_t y)
+static int insert_edge(struct graph *g, struct vertex *x, struct vertex *y)
 {
 	struct edge *p = malloc(sizeof(*p));
 	if (!p)
+	{
 		return -1;
+	}
 
-	p->y = y;
-	p->next = g->verts[x].edges;
-	g->verts[x].edges = p;
-	g->verts[x].degree++;
+	p->target = y;
+	p->next = x->edges;
+	x->edges = p;
+	x->degree++;
 	g->ecount++;
 	return 0;
 }
 
-static int find_vertex(struct graph *g, const char *name, size_t *pos)
+static unsigned hashfn(const char *word)
 {
-	if (g->vcount == 0 || name == NULL) {
-		*pos = 0;
-		return 0;
+	unsigned hash = 5381;
+	while (*word)
+	{
+		hash = hash * 33 + *word++;
 	}
-
-	size_t low = 0;
-	size_t high = g->vcount-1;
-	while (low < high) {
-		size_t mid = low + (high - low) / 2;
-		if (strcmp(g->verts[mid].data.dst, name) < 0) {
-			low = mid + 1;
-		} else {
-			high = mid;
-		}
-	}
-	int c = strcmp(g->verts[high].data.dst, name);
-	if (c < 0) {
-		*pos = high + 1;
-		return 0;
-	} else if (c > 0) {
-		*pos = high;
-		return 0;
-	} else {
-		*pos = high;
-		return 1;
-	}
+	return hash;
 }
 
-static int vertex_cmp(const void *pa, const void *pb)
+static struct vertex *find_vertex(struct graph *g, const char *name)
 {
-	const struct vertex *a = pa, *b = pb;
-	return strcmp(a->data.dst, b->data.dst);
+	unsigned pos = hashfn(name) & (TABLE_SIZE-1);
+	struct vertex *v = g->table[pos];
+	while (v && strcmp(v->data.dst, name) != 0)
+	{
+		v = v->next;
+	}
+	return v;
+}
+
+static struct vertex *add_vertex(struct graph *g, const char *name)
+{
+	unsigned pos = hashfn(name) & (TABLE_SIZE-1);
+	struct vertex *v = g->table[pos];
+	while (v && strcmp(v->data.dst, name) != 0)
+	{
+		v = v->next;
+	}
+	if (!v)
+	{
+		v = calloc(1, sizeof(*v));
+		v->next = g->table[pos];
+		g->table[pos] = v;
+		g->vcount++;
+	}
+	return v;
 }
 
 static struct graph *graph_load(FILE *input)
 {
 	struct graph *g = calloc(1, sizeof(*g));
 	if (!g)
+	{
 		return NULL;
+	}
 
 	/* the vertices are the gates*/
 	char *line = NULL;
-	size_t linesize = 0;
-	while (getline(&line, &linesize, input) != -1) {
-		if (g->vcount == g->vsize) {
-			size_t ns = g->vsize ? g->vsize * 2 : 2;
-			struct vertex *nv = realloc(g->verts, ns * sizeof(nv[0]));
-			if (!nv) {
-				graph_free(g);
-				return NULL;
-			}
-			g->vsize = ns;
-			g->verts = nv;
+	size_t lsize = 0;
+	while (getline(&line, &lsize, input) != -1)
+	{
+		struct gate data = {};
+		gate_parse(line, &data);
+
+		struct vertex *v = add_vertex(g, data.dst);
+		if (v)
+		{
+			v->data = data;
 		}
-		g->verts[g->vcount].parent = SIZE_MAX;
-		g->verts[g->vcount].degree = 0;
-		g->verts[g->vcount].edges = NULL;
-		gate_parse(line, &g->verts[g->vcount].data);
-		g->vcount++;
 	}
 	free(line);
 
-	/* sort the vertices by dst name for easier edge finding */
-	qsort(g->verts, g->vcount, sizeof(g->verts[0]), vertex_cmp);
-
 	/* now add the edges */
-	for (size_t i = 0; i < g->vcount; i++) {
-		size_t x;
-		if (find_vertex(g, g->verts[i].data.src1, &x))
-			insert_edge(g, x, i);
-		if (find_vertex(g, g->verts[i].data.src2, &x))
-			insert_edge(g, x, i);
+	for (size_t i = 0; i < TABLE_SIZE; i++)
+	{
+		for (struct vertex *v = g->table[i];
+		     v;
+		     v = v->next)
+		{
+			struct vertex *src;
+			if (v->data.src1 && (src = find_vertex(g, v->data.src1)))
+			{
+				insert_edge(g, src, v);
+			}
+
+			if (v->data.src2 && (src = find_vertex(g, v->data.src2)))
+			{
+				insert_edge(g, src, v);
+			}
+		}
 	}
 
 	/* allocate the stack of the topological sort */
 	g->stack = malloc(g->vcount * sizeof(g->stack[0]));
-	if (!g->stack) {
+	if (!g->stack)
+	{
 		graph_free(g);
 		return NULL;
 	}
@@ -386,18 +432,32 @@ static struct graph *graph_load(FILE *input)
 static void graph_build_deps(struct graph *g)
 {
 	/* initialize the DFS */
-	for (size_t i = 0; i < g->vcount; i++) {
-		g->verts[i].state = UNKNOWN;
-		g->verts[i].parent = SIZE_MAX;
-		g->verts[i].entry = g->verts[i].exit = 0;
+	for (size_t i = 0; i < TABLE_SIZE; i++)
+	{
+		for (struct vertex *v = g->table[i];
+		     v;
+		     v = v->next)
+		{
+			v->state = UNKNOWN;
+			v->parent = NULL;
+			v->entry = v->exit = 0;
+		}
 	}
 	g->scount = 0;
 	g->time = 0;
 
 	/* make a DFS for each connected component */
-	for (size_t i = 0; i < g->vcount; i++) {
-		if (g->verts[i].state == UNKNOWN)
-			dfsr(g, i);
+	for (size_t i = 0; i < TABLE_SIZE; i++)
+	{
+		for (struct vertex *v = g->table[i];
+		     v;
+		     v = v->next)
+		{
+			if (v->state == UNKNOWN)
+			{
+				dfsr(g, v);
+			}
+		}
 	}
 }
 
@@ -405,10 +465,10 @@ static void graph_build_deps(struct graph *g)
 static void graph_eval(struct graph *g, struct symtab *st)
 {
 	size_t i = g->scount;
-	while (i-- > 0) {
-		size_t v = g->stack[i];
-		struct gate *gate = &g->verts[v].data;
-		symtab_add(st, gate->dst, gate_eval(gate, st));
+	while (i-- > 0)
+	{
+		struct vertex *v = g->stack[i];
+		symtab_add(st, v->data.dst, gate_eval(&v->data, st));
 	}
 }
 
@@ -442,16 +502,18 @@ int main(int argc, char *argv[])
 	graph_eval(g, st);
 
 	size_t pos;
-	if (symtab_find(st, "a", &pos)) {
+	if (symtab_find(st, "a", &pos))
+	{
 		uint16_t value = st->table[pos].value;
-		printf("Value of the signal a: %u\n", value);
-		printf("Overriding b with signal %u...\n", value);
+		printf("part1: %u\n", value);
+		/* overriding b with signal a */
 		st->count = 0;
 		symtab_add(st, "b", value);
 		graph_eval(g, st);
 		if (symtab_find(st, "a", &pos))
-			printf("Value of the signal a: %u\n",
-			       st->table[pos].value);
+		{
+			printf("part2: %u\n", st->table[pos].value);
+		}
 	}
 
 	symtab_free(st);

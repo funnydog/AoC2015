@@ -1,8 +1,11 @@
+#include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
-enum {
+enum
+{
 	NONE,
 	ESCAPED,
 	HEX1,
@@ -13,31 +16,52 @@ static size_t declength(const char *str)
 {
 	size_t real = 0, repr = 0;
 	int state = NONE;
-	for (; str[0] != 0 && str[0] != '\n'; str++) {
+	for (; str[0] != 0 && str[0] != '\n'; str++)
+	{
 		repr++;
-		if (state == NONE) {
+		if (state == NONE)
+		{
 			if (str[0] == '\\')
+			{
 				state = ESCAPED;
+			}
 			else
+			{
 				real++;
-		} else if (state == ESCAPED) {
-			if (str[0] == 'x') {
+			}
+		}
+		else if (state == ESCAPED)
+		{
+			if (str[0] == 'x')
+			{
 				state = HEX1;
-			} else if (str[0] == '\\' || str[0] == '"') {
+			}
+			else if (str[0] == '\\' || str[0] == '"')
+			{
 				real++;
 				state = NONE;
-			} else {
+			}
+			else
+			{
 				state = NONE;
 			}
-		} else if (state == HEX1) {
-			if (isxdigit(str[0])) {
+		}
+		else if (state == HEX1)
+		{
+			if (isxdigit(str[0]))
+			{
 				state = HEX2;
-			} else {
+			}
+			else
+			{
 				real++;
 				state = NONE;
 			}
-		} else {
-			if (isxdigit(str[0])) {
+		}
+		else
+		{
+			if (isxdigit(str[0]))
+			{
 				real++;
 			}
 			state = NONE;
@@ -49,12 +73,17 @@ static size_t declength(const char *str)
 static size_t enclength(const char *s)
 {
 	size_t real = 0, repr = 0;
-	for (; s[0] != 0 && s[0] != '\n'; s++) {
+	for (; s[0] != 0 && s[0] != '\n'; s++)
+	{
 		real++;
 		if (s[0] == '"' || s[0] == '\\')
+		{
 			repr += 2;
+		}
 		else
+		{
 			repr++;
+		}
 	}
 	return repr + 2 - real;
 }
@@ -72,16 +101,28 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	assert(declength("\"\"") == 2-0);
+	assert(declength("\"abc\"") == 5-3);
+	assert(declength("\"aaa\\\"aaa\"") == 10-7);
+	assert(declength("\"\\x27\"") == 6-1);
+
+	assert(enclength("\"\"") == 6-2);
+	assert(enclength("\"abc\"") == 9-5);
+	assert(enclength("\"aaa\\\"aaa\"") == 16-10);
+	assert(enclength("\"\\x27\"") == 11-6);
+
 	size_t decdif = 0, encdif = 0;
 	char *line;
 	size_t linesize = 0;
-	while (getline(&line, &linesize, input) != -1) {
+	while (getline(&line, &linesize, input) != -1)
+	{
 		decdif += declength(line);
 		encdif += enclength(line);
 	}
+	free(line);
 
-	printf("Decoding Difference: %zu\n", decdif);
-	printf("Encoding Difference: %zu\n", encdif);
+	printf("part1: %zu\n", decdif);
+	printf("part2: %zu\n", encdif);
 
 	fclose(input);
 	return 0;

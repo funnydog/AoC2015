@@ -2,7 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum {
+enum
+{
 	ID = 0,
 	CHILDREN,
 	CATS,
@@ -155,13 +156,38 @@ int main(int argc, char *argv[])
 	}
 
 	struct aunts *a = aunts_load(input);
-	fclose(input);
-
-	if (!a) {
+	if (!a)
+	{
 		fprintf(stderr, "Cannot parse the aunts\n");
+		fclose(input);
 		return -1;
 	}
 
+	remove_if_ne(a, CHILDREN, 3);
+	remove_if_ne(a, CATS, 7);
+	remove_if_ne(a, SAMOYEDS, 2);
+	remove_if_ne(a, POMERANIANS, 3);
+	remove_if_ne(a, AKITAS, 0);
+	remove_if_ne(a, VIZSLAS, 0);
+	remove_if_ne(a, GOLDFISH, 5);
+	remove_if_ne(a, TREES, 3);
+	remove_if_lte(a, TREES, 3);
+	remove_if_ne(a, CARS, 2);
+	remove_if_ne(a, PERFUMES, 1);
+	for (size_t i = 0; i < a->count; i++)
+	{
+		printf("part1: %d\n", a->pool[i].prop[ID]);
+	}
+	aunts_free(a);
+
+	rewind(input);
+	a = aunts_load(input);
+	fclose(input);
+	if (!a)
+	{
+		fprintf(stderr, "Cannot parse the aunts\n");
+		return -1;
+	}
 	remove_if_ne(a, CHILDREN, 3);
 	remove_if_lte(a, CATS, 7);
 	remove_if_ne(a, SAMOYEDS, 2);
@@ -172,10 +198,11 @@ int main(int argc, char *argv[])
 	remove_if_lte(a, TREES, 3);
 	remove_if_ne(a, CARS, 2);
 	remove_if_ne(a, PERFUMES, 1);
-	for (size_t i = 0; i < a->count; i++) {
-		printf("Aunt: %d\n", a->pool[i].prop[ID]);
-	}
 
+	for (size_t i = 0; i < a->count; i++)
+	{
+		printf("part2: %d\n", a->pool[i].prop[ID]);
+	}
 	aunts_free(a);
 	return 0;
 }
