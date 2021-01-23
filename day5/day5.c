@@ -9,26 +9,32 @@ int isnice(const char *str)
 	int previous = 0;
 	int twiceinrow = 0;
 
-	const char *n[] = {
-		"ab",
-		"cd",
-		"pq",
-		"xy",
-	};
+	const char *forbidden[] = {"ab", "cd", "pq", "xy"};
 	int indices[4] = {0};
-	for (; *str; str++) {
+	for (; *str; str++)
+	{
 		if (strchr("aeiou", *str))
+		{
 			vovels++;
+		}
 
 		if (*str == previous)
+		{
 			twiceinrow++;
+		}
 
-		for (int i = 0; i < 4; i++) {
-			if (*str == n[i][indices[i]]) {
+		for (int i = 0; i < 4; i++)
+		{
+			if (*str == forbidden[i][indices[i]])
+			{
 				indices[i]++;
-				if (n[i][indices[i]] == 0)
+				if (forbidden[i][indices[i]] == 0)
+				{
 					return 0;
-			} else {
+				}
+			}
+			else
+			{
 				indices[i] = 0;
 			}
 		}
@@ -37,9 +43,14 @@ int isnice(const char *str)
 	}
 
 	if (vovels < 3)
+	{
 		return 0;
+	}
+
 	if (twiceinrow < 1)
+	{
 		return 0;
+	}
 
 	return 1;
 }
@@ -50,40 +61,49 @@ int isnice2(const char *str)
 	int rule2 = 0;
 
 	char seq[3] = {0};
-	for (size_t i = 0; str[i]; i++) {
-		if (!rule1) {
+	for (size_t i = 0; str[i]; i++)
+	{
+		if (!rule1)
+		{
 			seq[0] = seq[1];
 			seq[1] = str[i];
 			char *find = strstr(str + i + 1, seq);
-			if (seq[0] && find) {
+			if (seq[0] && find)
+			{
 				rule1 = 1;
 			}
 		}
-		if (!rule2) {
-			if (i >= 2 && str[i-2] == str[i]) {
+
+		if (!rule2)
+		{
+			if (i >= 2 && str[i-2] == str[i])
+			{
 				rule2 = 1;
 			}
 		}
+
+		if (rule1 && rule2)
+		{
+			break;
+		}
 	}
 
-	if (rule1 && rule2) {
-		return 1;
-	}
-
-	return 0;
+	return rule1 && rule2;
 }
 
 int main(int argc, char *argv[])
 {
-	if (argc < 2) {
+	if (argc < 2)
+	{
 		fprintf(stderr, "Usage: %s filename\n", argv[0]);
-		return -1;
+		return 1;
 	}
 
 	FILE *input = fopen(argv[1], "rb");
-	if (!input) {
-		fprintf(stderr, "Cannot open %s for reading\n", argv[1]);
-		return -1;
+	if (!input)
+	{
+		fprintf(stderr, "Cannot open %s\n", argv[1]);
+		return 1;
 	}
 
 	assert(isnice("ugknbfddgicrmopn"));
@@ -92,16 +112,16 @@ int main(int argc, char *argv[])
 	assert(!isnice("haegwjzuvuyypxyu"));
 	assert(!isnice("dvszwmarrgswjxmb"));
 
-	isnice2("qjhvhtzxzqqjkmpb");
-	isnice2("xxyxx");
-	isnice2("uurcxstgmygtbstg");
-	isnice2("ieodomkazucvgmuy");
+	assert(isnice2("qjhvhtzxzqqjkmpb"));
+	assert(isnice2("xxyxx"));
+	assert(!isnice2("uurcxstgmygtbstg"));
+	assert(!isnice2("ieodomkazucvgmuy"));
 
 	size_t part1 = 0;
 	size_t part2 = 0;
 	char *line = NULL;
 	size_t linesize = 0;
-	while (getline(&line, &linesize, input) >= 0)
+	while (getline(&line, &linesize, input) != -1)
 	{
 		line[strlen(line)-1] = 0;
 		if (isnice(line))
@@ -114,9 +134,9 @@ int main(int argc, char *argv[])
 		}
 	}
 	free(line);
+	fclose(input);
 
 	printf("part1: %zu\n", part1);
 	printf("part2: %zu\n", part2);
-	fclose(input);
 	return 0;
 }
