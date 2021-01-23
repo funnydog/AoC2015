@@ -11,22 +11,25 @@ enum {
 
 int main(int argc, char *argv[])
 {
-	if (argc < 2) {
+	if (argc < 2)
+	{
 		fprintf(stderr, "Usage: %s filename\n", argv[0]);
-		return -1;
+		return 1;
 	}
 
 	FILE *input = fopen(argv[1], "rb");
-	if (!input) {
-		fprintf(stderr, "Cannot open %s for reading\n", argv[1]);
-		return -1;
+	if (!input)
+	{
+		fprintf(stderr, "Cannot open %s\n", argv[1]);
+		return 1;
 	}
 
 	int part1[1000][1000] = {};
 	int part2[1000][1000] = {};
 	char *line = NULL;
 	size_t linesize = 0;
-	while (getline(&line, &linesize, input) >= 0) {
+	while (getline(&line, &linesize, input) != -1)
+	{
 		int x0, x1, y0, y1;
 		int action = 0;
 		int skip = 0;
@@ -34,18 +37,21 @@ int main(int argc, char *argv[])
 		{
 			action = TURN_ON;
 			skip = strlen("turn on ");
-		} else if (strstr(line, "toggle ") == line)
+		}
+		else if (strstr(line, "toggle ") == line)
 		{
 			action = TOGGLE;
 			skip = strlen("toggle ");
-		} else if (strstr(line, "turn off ") == line)
+		}
+		else if (strstr(line, "turn off ") == line)
 		{
 			action = TURN_OFF;
 			skip = strlen("turn off ");
 		}
 
 		sscanf(line+skip, "%d,%d through %d,%d\n", &x0, &y0, &x1, &y1);
-		switch (action) {
+		switch (action)
+		{
 		case TURN_ON:
 			for (int y = y0; y <= y1; y++)
 			{
@@ -99,7 +105,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	printf("part1: %d\n", answer1);
-	printf("part2: %d\n", answer2);
+	printf("Part1: %d\n", answer1);
+	printf("Part2: %d\n", answer2);
 	return 0;
 }
