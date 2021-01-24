@@ -4,18 +4,10 @@
 #include <string.h>
 #include <stdlib.h>
 
-enum
-{
-	NONE,
-	ESCAPED,
-	HEX1,
-	HEX2,
-};
-
 static size_t declength(const char *str)
 {
 	size_t real = 0, repr = 0;
-	int state = NONE;
+	enum { NONE, ESCAPED, HEX1, HEX2 } state = NONE;
 	for (; str[0] != 0 && str[0] != '\n'; str++)
 	{
 		repr++;
@@ -25,7 +17,7 @@ static size_t declength(const char *str)
 			{
 				state = ESCAPED;
 			}
-			else
+			else if (str[0] != '"')
 			{
 				real++;
 			}
@@ -58,7 +50,7 @@ static size_t declength(const char *str)
 				state = NONE;
 			}
 		}
-		else
+		else if (state == HEX2)
 		{
 			if (isxdigit(str[0]))
 			{
@@ -66,8 +58,12 @@ static size_t declength(const char *str)
 			}
 			state = NONE;
 		}
+		else
+		{
+			abort();
+		}
 	}
-	return repr + 2 - real;
+	return repr - real;
 }
 
 static size_t enclength(const char *s)
@@ -90,15 +86,17 @@ static size_t enclength(const char *s)
 
 int main(int argc, char *argv[])
 {
-	if (argc < 2) {
+	if (argc < 2)
+	{
 		fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
-		return -1;
+		return 1;
 	}
 
 	FILE *input = fopen(argv[1], "rb");
-	if (!input) {
-		fprintf(stderr, "Cannot open %s for reading\n", argv[1]);
-		return -1;
+	if (!input)
+	{
+		fprintf(stderr, "Cannot open %s\n", argv[1]);
+		return 1;
 	}
 
 	assert(declength("\"\"") == 2-0);
@@ -120,10 +118,9 @@ int main(int argc, char *argv[])
 		encdif += enclength(line);
 	}
 	free(line);
-
-	printf("part1: %zu\n", decdif);
-	printf("part2: %zu\n", encdif);
-
 	fclose(input);
+
+	printf("Part1: %zu\n", decdif);
+	printf("Part2: %zu\n", encdif);
 	return 0;
 }
